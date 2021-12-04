@@ -1,0 +1,12 @@
+[package]
+name = "aoc2021"
+version = "0.1.0"
+edition = "2021"
+
+[workspace]
+members = [
+  "day1",
+  "day2",
+  "day3",
+  "day3_2",
+]
