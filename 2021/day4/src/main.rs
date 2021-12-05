@@ -115,7 +115,7 @@ impl Game {
         Some(selected_num)
     }
 
-    fn get_winning(&self) -> Option<&Board> {
+    fn _get_winning(&self) -> Option<&Board> {
         for board in self.boards.iter() {
             if board.is_winning() {
                 return Some(board);
