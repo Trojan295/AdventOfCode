@@ -23,7 +23,7 @@ impl std::fmt::Display for Error {
 
 impl std::error::Error for Error {}
 
-fn load_input(path: &str) -> Result<Vec<u32>, Error> {
+fn load_input(path: &str) -> Result<Vec<u64>, Error> {
     let f = File::open(path).map_err(|err| Error::IO(err))?;
     let mut reader = BufReader::new(f);
 
@@ -36,32 +36,37 @@ fn load_input(path: &str) -> Result<Vec<u32>, Error> {
     let input: Result<Vec<_>, _> = data
         .trim()
         .split(',')
-        .map(|s| s.parse::<u32>().map_err(|_| Error::WrongInput))
+        .map(|s| s.parse::<u64>().map_err(|_| Error::WrongInput))
         .collect();
     input
 }
 
-fn next_day(state: &mut Vec<u32>) {
-    let mut new_fishes = 0;
+fn new_state(input: &Vec<u64>) -> Vec<u64> {
+    let mut state = vec![0; 9];
 
-    for fish in state.iter_mut() {
-        if *fish == 0 {
-            *fish = 6;
-            new_fishes += 1;
-        } else {
-            *fish -= 1;
-        }
+    for x in input {
+        state.get_mut(*x as usize).map(|c| *c += 1);
     }
 
-    for _ in 0..new_fishes {
-        state.push(8);
-    }
+    state
+}
+
+fn next_day(state: &mut Vec<u64>) {
+    let births = state[0];
+    state.rotate_left(1);
+
+    state[6] += births;
+    state[8] = births;
+}
+
+fn count(state: &Vec<u64>) -> u64 {
+    state.iter().sum()
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    //let input_file = std::env::args().nth(1).unwrap_or("input.txt".to_owned());
-    //let mut state = load_input(&input_file)?;
-    let mut state = vec![3, 4, 3, 1, 2];
+    let input_file = std::env::args().nth(1).unwrap_or("input.txt".to_owned());
+    let input = load_input(&input_file)?;
+    let mut state = new_state(&input);
 
     let days = 256;
 
@@ -69,23 +74,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         next_day(&mut state);
     }
 
-    println!("{:?}", state.len());
+    println!("{:?}", count(&state));
 
     Ok(())
-}
-
-mod tests {
-
-    use super::*;
-    use test::Bencher;
-
-    #[bench]
-    fn bench_next_day(b: &mut Bencher) {
-        b.iter(|| {
-            let mut state = vec![3, 4, 3, 1, 2];
-            for _ in 0..100 {
-                next_day(&mut state)
-            }
-        })
-    }
 }
