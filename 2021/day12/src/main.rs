@@ -1,32 +1,64 @@
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug)]
-struct Edge {
-    name: String,
-    neighbors: Vec<String>,
+#[derive(Debug, PartialEq, Clone, Copy, Eq, Hash)]
+enum Cave {
+    Start,
+    End,
+    Small(u32),
+    Large(u32),
 }
 
-fn can_go_into(edge: &str, visited: &HashMap<String, u32>) -> bool {
-    if edge.clone() == "start" {
+impl Cave {
+    fn from_name(name: &str) -> Cave {
+        if name == "start" {
+            Cave::Start
+        } else if name == "end" {
+            Cave::End
+        } else if name.to_lowercase() == *name {
+            let id = name
+                .chars()
+                .enumerate()
+                .map(|(i, c)| ((i + 1) * (c as usize)) as u32)
+                .sum();
+            Cave::Small(id)
+        } else {
+            let id = name
+                .chars()
+                .enumerate()
+                .map(|(i, c)| ((i + 1) * (c as usize)) as u32)
+                .sum();
+            Cave::Large(id)
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Edge {
+    name: Cave,
+    neighbors: Vec<Cave>,
+}
+
+fn can_go_into(edge: &Cave, visited: &HashMap<Cave, u32>) -> bool {
+    if let Cave::Start = edge {
         // cannot to into start
         return false;
     }
 
-    if edge.to_uppercase() == edge {
+    if let Cave::Large(_) = edge {
         // can go into large cave
         return true;
     }
 
     let small_visited_twice = *visited
         .iter()
-        .filter(|(x, _)| x.to_lowercase() == **x)
+        .filter(|(x, _)| if let Cave::Small(_) = x { true } else { false })
         .map(|(_, v)| v)
         .max()
         .unwrap()
         == 2;
 
     if small_visited_twice {
-        if *visited.get(edge).unwrap() == 0 {
+        if *visited.get(&edge).unwrap() == 0 {
             return true;
         }
         return false;
@@ -37,12 +69,12 @@ fn can_go_into(edge: &str, visited: &HashMap<String, u32>) -> bool {
 
 fn get_paths(
     edge: &Edge,
-    graph: &HashMap<String, Edge>,
-    path: Vec<String>,
-    visited: HashMap<String, u32>,
-    paths: &mut Vec<Vec<String>>,
+    graph: &HashMap<Cave, Edge>,
+    path: Vec<Cave>,
+    visited: HashMap<Cave, u32>,
+    paths: &mut Vec<Vec<Cave>>,
 ) {
-    if edge.name == "end" {
+    if edge.name == Cave::End {
         paths.push(path);
         return;
     }
@@ -66,20 +98,17 @@ fn get_paths(
 
 fn main() {
     let graph = get_input();
-    let edge = graph.get("start").unwrap();
+    let edge = graph.get(&Cave::Start).unwrap();
 
     let mut paths = Vec::new();
     let visited = HashMap::from_iter(graph.iter().map(|(v, _)| (v.to_owned(), 0)));
 
-    get_paths(edge, &graph, vec!["start".to_string()], visited, &mut paths);
+    get_paths(edge, &graph, vec![Cave::Start], visited, &mut paths);
 
-    for p in paths.iter() {
-        println!("{:?}", p);
-    }
     println!("{:?}", paths.len());
 }
 
-fn get_input() -> HashMap<String, Edge> {
+fn get_input() -> HashMap<Cave, Edge> {
     let edges: Vec<(String, String)> = vec![
         ("we", "NX"),
         ("ys", "px"),
@@ -117,23 +146,23 @@ fn get_input() -> HashMap<String, Edge> {
         vertices.insert(v2.clone());
     }
 
-    let mut graph = HashMap::new();
+    let mut graph: HashMap<Cave, Edge> = HashMap::new();
 
     for v in vertices.iter() {
-        let mut neighbor = vec![];
+        let mut neighbor: Vec<Cave> = vec![];
 
         for (v1, v2) in edges.iter() {
             if *v == *v1 {
-                neighbor.push(v2.clone());
+                neighbor.push(Cave::from_name(v2));
             } else if *v == *v2 {
-                neighbor.push(v1.clone());
+                neighbor.push(Cave::from_name(v1));
             }
         }
 
         graph.insert(
-            v.clone(),
+            Cave::from_name(v),
             Edge {
-                name: v.clone(),
+                name: Cave::from_name(v),
                 neighbors: neighbor,
             },
         );
