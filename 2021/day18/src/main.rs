@@ -4,6 +4,7 @@ use std::{
     borrow::BorrowMut,
     fs::File,
     io::{BufRead, BufReader},
+    str::FromStr,
 };
 
 use serde_json::{json, Value};
@@ -57,17 +58,24 @@ impl SplitResult {
     }
 }
 
-impl Sailfish {
-    fn from_str(s: &str) -> Self {
-        let v: Value = serde_json::from_str(s).unwrap();
-        Sailfish::from_value(&v)
-    }
+impl FromStr for Sailfish {
+    type Err = serde_json::error::Error;
 
-    fn to_string(&self) -> String {
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let v: Value = serde_json::from_str(s)?;
+        Ok(Sailfish::from_value(&v))
+    }
+}
+
+impl std::fmt::Display for Sailfish {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let v = self.to_value();
-        serde_json::to_string(&v).unwrap()
+        let s = v.to_string();
+        f.write_str(&s)
     }
+}
 
+impl Sailfish {
     fn to_value(&self) -> serde_json::Value {
         match &self {
             Sailfish::Number(x) => json!(x),
@@ -178,7 +186,6 @@ impl Sailfish {
 
                 ExploreResult::none()
             }
-            _ => ExploreResult::none(),
         }
     }
 
@@ -221,7 +228,10 @@ fn load_input(path: &str) -> Vec<Sailfish> {
     let lines: std::io::Result<Vec<String>> = reader.lines().collect();
     let lines = lines.unwrap();
 
-    lines.into_iter().map(|x| Sailfish::from_str(&x)).collect()
+    lines
+        .into_iter()
+        .map(|x| Sailfish::from_str(&x).unwrap())
+        .collect()
 }
 
 fn main() {
@@ -254,7 +264,7 @@ fn main() {
 #[test]
 fn test_sailfish_from_str() {
     assert_eq!(
-        Sailfish::from_str("[0,1]"),
+        Sailfish::from_str("[0,1]").unwrap(),
         Sailfish::Pair(Box::new(Sailfish::Number(0)), Box::new(Sailfish::Number(1)))
     );
 }
@@ -269,49 +279,49 @@ fn test_sailfish_to_string() {
 
 #[test]
 fn test_explode() {
-    let mut s = Sailfish::from_str("[[[[[9,8],1],2],3],4]");
+    let mut s = Sailfish::from_str("[[[[[9,8],1],2],3],4]").unwrap();
     s.explode(0);
     assert_eq!(&s.to_string(), "[[[[0,9],2],3],4]");
 
-    let mut s = Sailfish::from_str("[7,[6,[5,[4,[3,2]]]]]");
+    let mut s = Sailfish::from_str("[7,[6,[5,[4,[3,2]]]]]").unwrap();
     s.explode(0);
     assert_eq!(&s.to_string(), "[7,[6,[5,[7,0]]]]");
 
-    let mut s = Sailfish::from_str("[[6,[5,[4,[3,2]]]],1]");
+    let mut s = Sailfish::from_str("[[6,[5,[4,[3,2]]]],1]").unwrap();
     s.explode(0);
     assert_eq!(&s.to_string(), "[[6,[5,[7,0]]],3]");
 
-    let mut s = Sailfish::from_str("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]");
+    let mut s = Sailfish::from_str("[[3,[2,[1,[7,3]]]],[6,[5,[4,[3,2]]]]]").unwrap();
     s.explode(0);
     assert_eq!(&s.to_string(), "[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]");
 
-    let mut s = Sailfish::from_str("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]");
+    let mut s = Sailfish::from_str("[[3,[2,[8,0]]],[9,[5,[4,[3,2]]]]]").unwrap();
     s.explode(0);
     assert_eq!(&s.to_string(), "[[3,[2,[8,0]]],[9,[5,[7,0]]]]");
 }
 
 #[test]
 fn test_split() {
-    let mut s = Sailfish::from_str("[10,0]");
+    let mut s = Sailfish::from_str("[10,0]").unwrap();
     s.split();
     assert_eq!(&s.to_string(), "[[5,5],0]");
 
-    let mut s = Sailfish::from_str("[11,0]");
+    let mut s = Sailfish::from_str("[11,0]").unwrap();
     s.split();
     assert_eq!(&s.to_string(), "[[5,6],0]");
 }
 
 #[test]
 fn test_reduce() {
-    let mut s = Sailfish::from_str("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]");
+    let mut s = Sailfish::from_str("[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]").unwrap();
     s.reduce();
     assert_eq!(&s.to_string(), "[[[[0,7],4],[[7,8],[6,0]]],[8,1]]")
 }
 
 #[test]
 fn test_add() {
-    let mut s = Sailfish::from_str("[[[[4,3],4],4],[7,[[8,4],9]]]");
-    let to_add = Sailfish::from_str("[1,1]");
+    let mut s = Sailfish::from_str("[[[[4,3],4],4],[7,[[8,4],9]]]").unwrap();
+    let to_add = Sailfish::from_str("[1,1]").unwrap();
     s = s + to_add;
-    assert_eq!(&s.to_string(), "[[[[[4,3],4],4],[7,[[8,4],9]]],[1,1]]")
+    assert_eq!(&s.to_string(), "[[[[0,7],4],[[7,8],[6,0]]],[8,1]]")
 }
