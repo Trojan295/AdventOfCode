@@ -40,12 +40,12 @@ impl Field {
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
 struct Burrow {
-    rooms: [(Field, Field); 4],
+    rooms: [(Field, Field, Field, Field); 4],
     hallway: [Field; 7],
 }
 
 impl Burrow {
-    fn new(rooms: [(Field, Field); 4]) -> Self {
+    fn new(rooms: [(Field, Field, Field, Field); 4]) -> Self {
         Self {
             hallway: [Field::Empty; 7],
             rooms: rooms,
@@ -54,7 +54,7 @@ impl Burrow {
 
     fn completed(&self) -> bool {
         match self.rooms {
-            [(Taken(Amber), Taken(Amber)), (Taken(Bronze), Taken(Bronze)), (Taken(Copper), Taken(Copper)), (Taken(Desert), Taken(Desert))] => {
+            [(Taken(Amber), Taken(Amber), Taken(Amber), Taken(Amber)), (Taken(Bronze), Taken(Bronze), Taken(Bronze), Taken(Bronze)), (Taken(Copper), Taken(Copper), Taken(Copper), Taken(Copper)), (Taken(Desert), Taken(Desert), Taken(Desert), Taken(Desert))] => {
                 true
             }
             _ => false,
@@ -68,9 +68,11 @@ impl Burrow {
         for room_idx in 0..4 {
             let mut burrow = self.clone();
             let amphipod = match &mut burrow.rooms[room_idx] {
-                (Empty, Empty) => None,
-                (Empty, field) => Some((field, 2)),
-                (field, _) => Some((field, 1)),
+                (Empty, Empty, Empty, Empty) => None,
+                (Empty, Empty, Empty, field) => Some((field, 4)),
+                (Empty, Empty, field, _) => Some((field, 3)),
+                (Empty, field, _, _) => Some((field, 2)),
+                (field, _, _, _) => Some((field, 1)),
             };
             if let Some((field, moves)) = amphipod {
                 let amphipod = field.amphiopod().unwrap();
@@ -131,16 +133,25 @@ impl Burrow {
             let mut moves = 0;
 
             let target_room = target_room.unwrap();
-            let (field1, field2) = &mut burrow.rooms[target_room];
-            let dest_field = match (&field1, &field2) {
-                (Taken(_), _) => continue,
-                (Empty, Empty) => {
+            let (field1, field2, field3, field4) = &mut burrow.rooms[target_room];
+            let dest_field = match (&field1, &field2, &field3, &field4) {
+                (Taken(_), _, _, _) => continue,
+                (Empty, Taken(_), _, _) => {
+                    moves += 1;
+                    field1
+                }
+                (Empty, Empty, Taken(_), _) => {
                     moves += 2;
                     field2
                 }
-                (Empty, Taken(_)) => {
-                    moves += 1;
-                    field1
+                (Empty, Empty, Empty, Taken(_)) => {
+                    moves += 3;
+                    field3
+                }
+
+                (Empty, Empty, Empty, Empty) => {
+                    moves += 4;
+                    field4
                 }
             };
 
@@ -204,11 +215,10 @@ fn next_move(
     //println!("{}", visited.len());
 
     if burrow.completed() {
-        //println!("Completed");
         return Some(energy);
     };
 
-    if depth > 15 {
+    if depth > 100 {
         return None;
     }
 
@@ -234,10 +244,10 @@ fn next_move(
 
 fn main() {
     let burrow = Burrow::new([
-        (Taken(Copper), Taken(Desert)),
-        (Taken(Copper), Taken(Amber)),
-        (Taken(Bronze), Taken(Bronze)),
-        (Taken(Desert), Taken(Amber)),
+        (Taken(Copper), Taken(Desert), Taken(Desert), Taken(Desert)),
+        (Taken(Copper), Taken(Copper), Taken(Bronze), Taken(Amber)),
+        (Taken(Bronze), Taken(Bronze), Taken(Amber), Taken(Bronze)),
+        (Taken(Desert), Taken(Amber), Taken(Copper), Taken(Amber)),
     ]);
     //let burrow = Burrow {
     //    rooms: [
