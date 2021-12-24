@@ -1,6 +1,7 @@
-use std::collections::HashMap;
+use std::collections::BinaryHeap;
+use std::collections::HashSet;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 enum Amphipod {
     Amber,
     Bronze,
@@ -21,7 +22,7 @@ impl Amphipod {
 
 use self::Amphipod::*;
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 enum Field {
     Empty,
     Taken(Amphipod),
@@ -38,7 +39,7 @@ impl Field {
     }
 }
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Debug, Clone, Copy, Hash)]
+#[derive(PartialEq, Eq, Debug, Clone, Copy, Hash)]
 struct Burrow {
     rooms: [(Field, Field, Field, Field); 4],
     hallway: [Field; 7],
@@ -90,7 +91,7 @@ impl Burrow {
                     burrow.hallway[pos] = new_field;
 
                     let mut moves = moves + 1 + (i * 2);
-                    if i == 1 + room_idx {
+                    if pos == 0 {
                         moves -= 1;
                     }
 
@@ -107,7 +108,7 @@ impl Burrow {
                     a_burrow.hallway[pos] = new_field;
 
                     let mut moves = moves + 1 + (i * 2);
-                    if i == 4 - room_idx {
+                    if pos == 6 {
                         moves -= 1;
                     }
 
@@ -130,21 +131,35 @@ impl Burrow {
             if target_room.is_none() {
                 continue;
             }
+            let amphipod = from_field.amphiopod().unwrap();
+
             let mut moves = 0;
 
             let target_room = target_room.unwrap();
             let (field1, field2, field3, field4) = &mut burrow.rooms[target_room];
             let dest_field = match (&field1, &field2, &field3, &field4) {
                 (Taken(_), _, _, _) => continue,
-                (Empty, Taken(_), _, _) => {
+                (Empty, Taken(a), Taken(b), Taken(c)) => {
+                    if amphipod != *a || amphipod != *b || amphipod != *c {
+                        continue;
+                    }
+
                     moves += 1;
                     field1
                 }
-                (Empty, Empty, Taken(_), _) => {
+                (Empty, Empty, Taken(a), Taken(b)) => {
+                    if amphipod != *a || amphipod != *b {
+                        continue;
+                    }
+
                     moves += 2;
                     field2
                 }
-                (Empty, Empty, Empty, Taken(_)) => {
+                (Empty, Empty, Empty, Taken(a)) => {
+                    if amphipod != *a {
+                        continue;
+                    }
+
                     moves += 3;
                     field3
                 }
@@ -153,6 +168,7 @@ impl Burrow {
                     moves += 4;
                     field4
                 }
+                _ => continue,
             };
 
             let amphipod = from_field.amphiopod().unwrap();
@@ -206,40 +222,22 @@ impl Burrow {
     }
 }
 
-fn next_move(
-    depth: usize,
-    visited: &mut HashMap<Burrow, usize>,
-    burrow: &Burrow,
+#[derive(PartialEq, Eq)]
+struct BurrowState {
+    burrow: Burrow,
     energy: usize,
-) -> Option<usize> {
-    //println!("{}", visited.len());
+}
 
-    if burrow.completed() {
-        return Some(energy);
-    };
-
-    if depth > 100 {
-        return None;
+impl Ord for BurrowState {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        other.energy.cmp(&self.energy)
     }
+}
 
-    let allowed_moves = burrow.allowed_moves();
-
-    let mut next_burrows = vec![];
-    for (burrow, new_energy) in allowed_moves.iter() {
-        let lowest_energy = visited.entry(*burrow).or_insert(usize::MAX);
-        let burrow_energy = energy + new_energy;
-        if burrow_energy < *lowest_energy {
-            *lowest_energy = burrow_energy;
-            next_burrows.push((burrow, burrow_energy));
-        };
+impl PartialOrd for BurrowState {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        other.energy.partial_cmp(&self.energy)
     }
-
-    next_burrows
-        .into_iter()
-        .map(|(burrow, new_energy)| next_move(depth + 1, visited, &burrow, new_energy))
-        .filter(|x| x.is_some())
-        .map(|x| x.unwrap())
-        .min()
 }
 
 fn main() {
@@ -249,18 +247,35 @@ fn main() {
         (Taken(Bronze), Taken(Bronze), Taken(Amber), Taken(Bronze)),
         (Taken(Desert), Taken(Amber), Taken(Copper), Taken(Amber)),
     ]);
-    //let burrow = Burrow {
-    //    rooms: [
-    //        (Empty, Empty),
-    //        (Empty, Empty),
-    //        (Empty, Empty),
-    //        (Empty, Empty),
-    //    ],
-    //    hallway: [Empty, Taken(Desert), Empty, Empty, Empty, Empty, Empty],
-    //};
 
-    let mut visited = HashMap::new();
+    let mut visited: HashSet<Burrow> = HashSet::new();
 
-    let energy = next_move(0, &mut visited, &burrow, 0);
-    println!("{:?}", energy);
+    let mut burrows = BinaryHeap::new();
+    burrows.push(BurrowState {
+        burrow: burrow,
+        energy: 0,
+    });
+
+    while let Some(burrow_state) = burrows.pop() {
+        if visited.contains(&burrow_state.burrow) {
+            continue;
+        }
+        visited.insert(burrow_state.burrow);
+
+        if burrow_state.burrow.completed() {
+            println!("Complated: {}", burrow_state.energy);
+            break;
+        }
+
+        let moves = burrow_state.burrow.allowed_moves();
+
+        for (burrow, new_energy) in moves {
+            burrows.push(BurrowState {
+                burrow: burrow,
+                energy: burrow_state.energy + new_energy,
+            });
+        }
+    }
+
+    println!("{}", burrows.len())
 }
