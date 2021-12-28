@@ -136,37 +136,36 @@ impl Burrow {
             let mut moves = 0;
 
             let target_room = target_room.unwrap();
-            let (field1, field2, field3, field4) = &mut burrow.rooms[target_room];
-            let dest_field = match (&field1, &field2, &field3, &field4) {
+            let dest_field = match &mut burrow.rooms[target_room] {
                 (Taken(_), _, _, _) => continue,
-                (Empty, Taken(a), Taken(b), Taken(c)) => {
+                (field @ Empty, Taken(a), Taken(b), Taken(c)) => {
                     if amphipod != *a || amphipod != *b || amphipod != *c {
                         continue;
                     }
 
                     moves += 1;
-                    field1
+                    field
                 }
-                (Empty, Empty, Taken(a), Taken(b)) => {
+                (Empty, field @ Empty, Taken(a), Taken(b)) => {
                     if amphipod != *a || amphipod != *b {
                         continue;
                     }
 
                     moves += 2;
-                    field2
+                    field
                 }
-                (Empty, Empty, Empty, Taken(a)) => {
+                (Empty, Empty, field @ Empty, Taken(a)) => {
                     if amphipod != *a {
                         continue;
                     }
 
                     moves += 3;
-                    field3
+                    field
                 }
 
-                (Empty, Empty, Empty, Empty) => {
+                (Empty, Empty, Empty, field @ Empty) => {
                     moves += 4;
-                    field4
+                    field
                 }
                 _ => continue,
             };
