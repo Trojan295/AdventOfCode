@@ -21,5 +21,3 @@
         three-top (take 3 calories-sorted)
         max-calories (reduce + three-top)]
     (println "3 elves have" max-calories "calories")))
-
-(run-day1)

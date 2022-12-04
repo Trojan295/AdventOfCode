@@ -1,11 +1,6 @@
 (ns aoc.day2
-  (:require [clojure.java.io :as io]
-            [clojure.string :as string]))
-
-(defn process-file-by-line
-  [filepath process-fn]
-  (with-open [rdr (io/reader filepath)]
-    (process-fn (line-seq rdr))))
+  (:require [clojure.string :as string]
+            [aoc.utils :as utils]))
 
 (defn process-round-line
   [line]
@@ -25,5 +20,8 @@
   [lines-seq]
   (reduce + (map process-round-line lines-seq)))
 
-(-> "resources/day2.txt"
-    (process-file-by-line process-lines))
+(defn run-day2
+  []
+  (-> "resources/day2.txt"
+      (utils/process-file-by-line process-lines)))
+
